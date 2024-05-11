@@ -1,11 +1,3 @@
-rootProject.name = 'evcp-ic-simulator'
-//include 'ic-iot'
-//include 'ic-iot:common'
-//include 'ic-iot:protocol'
-//include 'ic-iot:bootstrap'
-//include 'ic-iot:iot'
-//include 'ic-iot:server'
-//include 'ic-common'
-//include 'ic-common:common'
+rootProject.name = 'ocpp-simulator'
 
 
