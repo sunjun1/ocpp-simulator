@@ -1,0 +1,182 @@
+plugins {
+    id 'org.springframework.boot' version '3.0.5'
+}
+
+allprojects {
+
+/**
+ * ----------------------------------------------------------------------------
+ */
+    group 'com.incarcloud'
+    version '1.0.0'
+
+    ext {
+        lombokVersion = "1.18.30"
+        hutoolVersion = "5.8.22"
+        springbootVersion = "3.1.5"
+        junitVersion = "5.9.1"
+        jacksonVersion = "2.15.3"
+        nettyVersion = "4.1.100.Final"
+        nacosVersion = "2022.0.0.0-RC1"
+        springCloudVersion = "2022.0.1"
+        fgeVersion = "2.2.6"
+        dataMongoVersion = "4.0.4"
+        jcraftVersion = "0.1.54"
+        kaptchaVersion = "2.3.2"
+        saTokenVersion = "1.37.0"
+    }
+    repositories {
+        maven { url "https://maven.aliyun.com/repository/public" }
+        maven { url "https://repository.incarcloud.com/content/groups/public" }
+    }
+
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'java-library'
+apply plugin: "io.spring.dependency-management"
+apply plugin: "org.springframework.boot"
+
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
+configurations.all {
+    exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+    exclude module: 'logback-classic'
+    exclude module: 'logback-core'
+}
+
+tasks.register('checkstyle', Checkstyle) {
+    configFile file("${rootDir}/config/checkstyle/checkstyle.xml")
+    ignoreFailures true
+    showViolations true
+    source = fileTree("src")
+    include "**/*.java"
+    exclude "**/test/**"
+    exclude "**/build/**"
+    classpath = files()
+}
+
+tasks.register('removeOutputLog') {
+    def subProjectPath = project.projectDir
+    println(subProjectPath)
+    if (null != subProjectPath) {
+        subProjectPath.list().each { filename ->
+            if (filename.endsWith(".log") || filename.equalsIgnoreCase("logs")) {
+                def subPath = new File(subProjectPath, filename)
+                if (subPath.isDirectory()) {
+                    for (File leafFile : subPath.listFiles()) {
+                        leafFile.delete()
+                    }
+                }
+                subPath.delete()
+            }
+        }
+    }
+}
+
+
+//忽略mapstruct <Unmapped target properties>告警
+compileJava {
+    options.compilerArgs << "-Amapstruct.unmappedTargetPolicy=IGNORE"
+
+    options.compilerArgs += [
+            '-Amapstruct.suppressGeneratorTimestamp=true',
+            '-Amapstruct.suppressGeneratorVersionInfoComment=true',
+            "-Amapstruct.verbose=true"
+    ]
+}
+
+
+dependencies {
+
+    implementation('org.springframework.boot:spring-boot-starter-log4j2')
+    implementation("cn.hutool:hutool-all:${hutoolVersion}")
+    implementation("org.springframework.cloud:spring-cloud-starter-bootstrap")
+    compileOnly("org.projectlombok:lombok:${lombokVersion}")
+    annotationProcessor("org.projectlombok:lombok:${lombokVersion}")
+    testCompileOnly("org.projectlombok:lombok:${lombokVersion}")
+    testAnnotationProcessor("org.projectlombok:lombok:${lombokVersion}")
+    testImplementation platform("org.junit:junit-bom:${junitVersion}")
+    testImplementation("org.junit.jupiter:junit-jupiter")
+
+    // ftp 依赖
+    implementation("com.jcraft:jsch:${jcraftVersion}")
+
+    //图片验证码
+    implementation("com.github.penggle:kaptcha:${kaptchaVersion}")
+
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: "1.18.26"
+    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: "1.18.26"
+
+    // https://mvnrepository.com/artifact/com.google.guava/guava
+    implementation group: 'com.google.guava', name: 'guava', version: "31.1-jre"
+
+    //springboot log4j2支持
+    implementation('org.springframework.boot:spring-boot-starter-log4j2')
+
+    //springboot validation支持
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // https://mvnrepository.com/artifact/com.github.ben-manes.caffeine/caffeine
+    implementation group: 'com.github.ben-manes.caffeine', name: 'caffeine', version: "3.1.5"
+
+    // https://mvnrepository.com/artifact/org.freemarker/freemarker
+    implementation group: 'org.freemarker', name: 'freemarker', version: "2.3.32"
+
+    implementation group: 'com.github.xiaoymin', name: 'knife4j-openapi3-jakarta-spring-boot-starter', version: "4.1.0"
+
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+    implementation 'commons-io:commons-io:2.11.0'
+
+    // websocket
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    //lettuce异步客户端(默认使用lettuce)
+    api("org.springframework.boot:spring-boot-starter-data-redis")
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+    api("com.github.fge:json-schema-validator:${fgeVersion}")
+
+}
+
+test {
+    useJUnitPlatform()
+}
+
+bootJar {
+    exclude "**/*-dev.yml"
+    exclude "**/*-test.yml"
+    manifest {
+        attributes 'Start-Class': 'com.incarcloud.ServerBoot'
+    }
+}
+
+bootRun {
+    /**
+     * 启动时候带入jvm的参数;如下(启动jvisualvm监控)
+     * nohup gradle bootRun -PjvmArgs="-Djava.rmi.server.hostname=172.16.24.36 -Dcom.sun.management.jmxremote.port=10001 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=true" &
+     */
+    if (project.hasProperty('jvmArgs')) {
+        jvmArgs(project.jvmArgs.split("\\s+") as List)
+    }
+    //开启缓存行补齐
+    jvmArgs('-XX:-RestrictContended')
+    jvmArgs('-Dfile.encoding=UTF-8')
+
+    mainClass = 'com.incarcloud.ServerBoot'
+}
+
+//生成jar时打包源码
+task sourceJar(type: Jar) {
+    from sourceSets.main.java.srcDirs
+    archiveClassifier.set("sources")
+}
+
+defaultTasks "bootJar"

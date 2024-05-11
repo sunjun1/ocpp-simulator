@@ -1,0 +1,15 @@
+server:
+  port: 39888
+app:
+  host: 127.0.0.1:28999
+  deviceId: incarsun
+  chargingVal: 600
+#app:
+#  host: 127.0.0.1:28999
+#  deviceId: incarxq
+#  chargingVal: 50
+#app:
+#  host: 10.0.11.50:28999
+#  deviceId: incarjl
+#  chargingVal: 800
+
